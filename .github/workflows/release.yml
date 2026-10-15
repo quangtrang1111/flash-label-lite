@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'lite/**'
-      - '.github/workflows/release.yml'
+      - '.github/**'
   workflow_dispatch:
 
 permissions:
