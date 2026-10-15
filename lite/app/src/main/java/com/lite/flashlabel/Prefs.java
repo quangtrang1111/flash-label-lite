@@ -33,7 +33,7 @@ final class Prefs {
         s.density = sp.getInt("density", 8);
         s.speed = sp.getInt("speed", 4);
         s.dither = sp.getBoolean("floyd", false);
-        s.compress = sp.getBoolean("compress", true) && Tspl.hasNativeCompressor();
+        s.compress = sp.getBoolean("compress", true);
         s.cropMm = sp.getFloat("crop", 0f);
         return s;
     }

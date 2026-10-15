@@ -103,17 +103,26 @@ There are two encodings:
 | `,1,` (raw, `c.a(bmp,w,h,thr)`) | luma = .3R+.59G+.11B; bit=1 if pure white or luma ≥ thr | **white** (0 = burn) | raw bytes, no length field: `BITMAP x,y,wBytes,h,1,<data>` |
 | `,3,` (compressed, `c.b(...)` + `Code941.code`) | avg(R,G,B) < thr → bit=1 | **black** before compression | `Code941.code()` output, length given as a field |
 
-`libCode941.so` is zlib 1.2.3 plus a custom `_tspl_bitmap_zlib_table`. The exact framing (raw deflate vs zlib header, and whether bits get inverted) isn't confirmed yet.
+### Mode 3 payload format (confirmed)
+
+Determined by running the vendor's native `Code941.code()` on test rasters on a real device:
+
+1. Start from the packed raster (`wBytes × h` bytes, MSB first, bit 1 = black).
+2. Replace every byte `b` with `TABLE[b]`, where `TABLE` is a fixed 256-byte permutation
+   (it starts `DD 5B F2 BD 0E 26 42 8D …`; the full table is in `Code941Compat.java`).
+3. Compress the result as a standard **zlib** stream (header `78 9C`, deflate level 6).
+
+The payload is that zlib stream, and `<len>` is its length. A Java implementation using
+`java.util.zip.Deflater` matched the native library byte-for-byte on 300 random rasters.
 
 ## 7. How FlashLabel Lite uses this
 
 - Transport, status polling, page setup and the per-page flow follow sections 2–5 exactly
   (see `lite/app/src/main/java/com/lite/flashlabel/Printer.java`, `Tspl.java` and `PrintJob.java`).
-- Images are sent with **BITMAP mode 1 (raw)** by default, which needs no native code.
-  A 40×30 mm label is about 40 B × 240 rows = 9.6 KB.
-- Mode 3 needs the vendor's proprietary `libCode941.so`, which is **not** distributed here.
-  If you have a copy, put it in `lite/app/src/main/jniLibs/arm64-v8a/` for a local build.
-  The app detects it (JNI class `com.itpp.Code941`) and enables the "Compress image data" switch.
+- Images are sent with **BITMAP mode 3 (compressed)** by default, using the pure-Java encoder
+  `Code941Compat.java` described above. No native code or vendor binary is needed.
+- Turning off "Compress image data" sends **BITMAP mode 1 (raw)** instead.
+  A 40×30 mm label is then about 40 B × 240 rows = 9.6 KB.
 - OpenCV is replaced by a short Floyd–Steinberg ditherer, and PDFium by Android's `PdfRenderer`.
 
 ## 8. Verifying on hardware

@@ -6,8 +6,6 @@ import android.graphics.Color;
 import android.graphics.Matrix;
 import android.graphics.Paint;
 
-import com.itpp.Code941;
-
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 
@@ -21,21 +19,7 @@ final class Tspl {
 
     static final int PAPER_CONTINUOUS = 0, PAPER_GAP = 1, PAPER_BLACK_MARK = 2;
 
-    private static Boolean nativeOk;
-
     private Tspl() {
-    }
-
-    static synchronized boolean hasNativeCompressor() {
-        if (nativeOk == null) {
-            try {
-                Class.forName("com.itpp.Code941");
-                nativeOk = true;
-            } catch (Throwable t) {
-                nativeOk = false;
-            }
-        }
-        return nativeOk;
     }
 
     /**
@@ -106,7 +90,7 @@ final class Tspl {
         return Color.red(c) * 0.3f + Color.green(c) * 0.59f + Color.blue(c) * 0.11f;
     }
 
-    /** c.b(): avg(RGB) &lt; threshold -&gt; bit set (black). Input for Code941. */
+    /** c.b(): avg(RGB) &lt; threshold -&gt; bit set (black). Input for the mode-3 compressor. */
     private static byte[] packBlackBits(Bitmap bmp, int thr) {
         int w = bmp.getWidth(), h = bmp.getHeight(), wb = (w + 7) / 8;
         byte[] out = new byte[wb * h];
@@ -142,7 +126,7 @@ final class Tspl {
         int wb = (bmp.getWidth() + 7) / 8, h = bmp.getHeight();
         ByteArrayOutputStream bo = new ByteArrayOutputStream();
         if (compressed) {
-            byte[] data = Code941.code(packBlackBits(bmp, THRESHOLD));
+            byte[] data = Code941Compat.code(packBlackBits(bmp, THRESHOLD));
             ascii(bo, "BITMAP 0,0," + wb + "," + h + ",3," + data.length + ",");
             bo.write(data, 0, data.length);
         } else {

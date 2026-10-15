@@ -241,7 +241,7 @@ public class MainActivity extends Activity {
         col.addView(speed, lp(MATCH, dp(this, 56)));
 
         col.addView(switchRow(Strings.DITHER, settings.dither, true, on -> settings.dither = on), lp(MATCH, dp(this, 56)));
-        col.addView(switchRow(Strings.COMPRESS, settings.compress, Tspl.hasNativeCompressor(), on -> settings.compress = on),
+        col.addView(switchRow(Strings.COMPRESS, settings.compress, true, on -> settings.compress = on),
                 lp(MATCH, dp(this, 56)));
 
         LinearLayout crop = settingRow(Strings.CROP_BOTTOM);

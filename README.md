@@ -3,7 +3,7 @@
 <h1 align="center">FlashLabel Lite</h1>
 
 <p align="center">
-A tiny Android app (~1.3 MB) for printing PDF shipping labels and images on
+A tiny Android app (~100 KB) for printing PDF shipping labels and images on
 A318BT-family Bluetooth thermal label printers.
 </p>
 
@@ -20,7 +20,7 @@ A318BT-family Bluetooth thermal label printers.
 
 The official FlashLabel app is about 48 MB because it bundles OpenCV, PDFium and a full label
 editor. FlashLabel Lite does one job — print a PDF or image on a label printer — in about
-2,000 lines of plain Java with **no dependencies** and **no XML layouts**.
+2,000 lines of plain Java with **no dependencies**, **no native code** and **no XML layouts**.
 
 ## Features
 
@@ -61,17 +61,17 @@ cd lite
 
 Without signing variables the release build is signed with your local debug key.
 
-### Optional: image compression
+### Image compression
 
-The printer also accepts zlib-compressed bitmaps, but producing them needs the vendor's proprietary
-`libCode941.so`, which is **not included** in this repository. Without it the app sends raw bitmaps,
-which works fine and is only slightly slower. If you have a copy, put it in
-`lite/app/src/main/jniLibs/arm64-v8a/` for a local build to enable the "Compress image data" switch.
+"Compress image data" sends bitmaps in the printer's compressed format (TSPL `BITMAP` mode 3),
+which is usually 10–100× smaller than raw. It is implemented in plain Java (`Code941Compat.java`)
+and produces byte-identical output to the vendor's native library, so no native code is needed.
+Turn it off to send raw bitmaps instead.
 
 ## Releases (CI)
 
 Every push to `main` that changes `lite/` builds the APK with GitHub Actions and publishes it as a
-GitHub release (`v1.0.<run number>`). See [`.github/workflows/release.yml`](.github/workflows/release.yml).
+GitHub release (`v1.1.<run number>`). See [`.github/workflows/release.yml`](.github/workflows/release.yml).
 
 To sign releases with a stable key (so new versions install over old ones), add these repository
 secrets: `KEYSTORE_BASE64` (base64 of your `.jks`), `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
