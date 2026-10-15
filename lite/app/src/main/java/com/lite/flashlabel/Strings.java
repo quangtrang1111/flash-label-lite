@@ -46,7 +46,9 @@ final class Strings {
     static final String OK = t("OK", "Xác nhận");
     static final String CANCEL = t("Cancel", "Huỷ");
     static final String LOADING = t("Loading…", "Đang tải…");
+    static final String DOWNLOADING = t("Downloading…", "Đang tải xuống…");
     static final String OPEN_FAILED = t("Cannot open file: ", "Không mở được tệp: ");
+    static final String NO_LINK = t("No PDF or image link found in the shared text", "Không tìm thấy liên kết PDF hoặc ảnh trong nội dung chia sẻ");
     static final String NO_FILE = t("Choose a PDF or image to print", "Hãy chọn tệp PDF hoặc ảnh để in");
     static final String NO_PAGE_SELECTED = t("No page selected to print", "Chưa chọn trang nào để in");
     static final String REPRINT_TITLE = t("Print again?", "In lại?");

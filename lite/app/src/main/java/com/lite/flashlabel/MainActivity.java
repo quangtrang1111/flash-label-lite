@@ -546,19 +546,36 @@ public class MainActivity extends Activity {
         startActivityForResult(i, REQ_PICK);
     }
 
+    private static final java.util.regex.Pattern LINK = java.util.regex.Pattern.compile("https?://\\S+");
+
+    /** Extracts http(s) links from shared text (apps often add a title or message around the URL). */
+    private static List<Uri> linksIn(String text) {
+        List<Uri> out = new ArrayList<>();
+        if (text == null) return out;
+        java.util.regex.Matcher m = LINK.matcher(text);
+        while (m.find()) {
+            String url = m.group().replaceAll("[)\\]>\"'.,;]+$", ""); // trailing punctuation
+            out.add(Uri.parse(url));
+        }
+        return out;
+    }
+
     private void handleIntent(Intent intent) {
         List<Uri> uris = new ArrayList<>();
         String action = intent == null ? null : intent.getAction();
         if (Intent.ACTION_SEND.equals(action)) {
             Uri u = intent.getParcelableExtra(Intent.EXTRA_STREAM);
             if (u != null) uris.add(u);
+            else uris.addAll(linksIn(intent.getStringExtra(Intent.EXTRA_TEXT))); // shared link(s)
         } else if (Intent.ACTION_SEND_MULTIPLE.equals(action)) {
             ArrayList<Uri> list = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
             if (list != null) uris.addAll(list);
         } else if (Intent.ACTION_VIEW.equals(action) && intent.getData() != null) {
             uris.add(intent.getData());
         }
+        Log.i(TAG, "intent " + action + " -> " + uris.size() + " file(s)");
         if (uris.isEmpty()) {
+            if (Intent.ACTION_SEND.equals(action)) toast(Strings.NO_LINK);
             rebuildStrip();
         } else {
             loadDocs(uris, true); // shared/opened from another app: show only these files
@@ -570,7 +587,9 @@ public class MainActivity extends Activity {
      * @param replace true to drop every current file first (only once the new ones loaded)
      */
     private void loadDocs(List<Uri> uris, boolean replace) {
-        ProgressDialog pd = ProgressDialog.show(this, null, Strings.LOADING, true, false);
+        boolean remote = false;
+        for (Uri u : uris) remote |= Docs.isRemote(u);
+        ProgressDialog pd = ProgressDialog.show(this, null, remote ? Strings.DOWNLOADING : Strings.LOADING, true, false);
         int firstDocId = nextDocId;
         nextDocId += uris.size();
         new Thread(() -> {
