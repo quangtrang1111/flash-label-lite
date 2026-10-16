@@ -28,7 +28,16 @@ final class Strings {
     static final String SPEED = t("Print speed", "Tốc độ in");
     static final String DITHER = t("Photo dithering", "In ảnh");
     static final String COMPRESS = t("Compress image data", "Nén dữ liệu ảnh");
-    static final String CROP_BOTTOM = t("Crop page bottom (mm)", "Cắt cuối trang (mm)");
+    static final String CROP_EDGES = t("Crop edges (mm)", "Cắt lề (mm)");
+    static final String CROP_TOP = t("Top", "Trên");
+    static final String CROP_LEFT = t("Left", "Trái");
+    static final String CROP_RIGHT = t("Right", "Phải");
+    static final String CROP_BOTTOM = t("Bottom", "Dưới");
+    static final String CROP_NONE = t("None", "Không");
+    static final String RESET = t("Reset", "Đặt lại");
+    static final String CROP_NO_PREVIEW = t("Open a file to see a preview", "Mở tệp để xem trước");
+    static final String CROP_HINT = t("Applied to every page before printing. Shaded areas are removed.",
+            "Áp dụng cho mọi trang trước khi in. Vùng tô tối sẽ bị cắt bỏ.");
     static final String PICK_FILE = t("Choose PDF / image", "Chọn PDF / ảnh");
     static final String ADD_FILE = t("Add file", "Thêm tệp");
     static final String PRINT_NOW = t("Print now", "In ngay");

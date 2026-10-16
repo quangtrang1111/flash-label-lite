@@ -31,7 +31,7 @@ public class PreviewActivity extends Activity {
     private TextView counter;
     private Bitmap current;
 
-    /** @param crops share of each page height to hide at the bottom (matches what will print) */
+    /** @param crops 4 values per page {top, left, right, bottom}, as for Tspl.crop (matches what will print) */
     static void open(Context c, List<File> files, float[] crops, int index) {
         String[] paths = new String[files.size()];
         for (int i = 0; i < paths.length; i++) paths[i] = files.get(i).getAbsolutePath();
@@ -89,7 +89,8 @@ public class PreviewActivity extends Activity {
         index = i;
         Bitmap full = Docs.thumb(new File(pages[i]), MAX_SIDE);
         if (full == null) return;
-        Bitmap next = crops != null && i < crops.length ? Tspl.cropBottom(full, crops[i]) : full;
+        Bitmap next = crops != null && crops.length >= (i + 1) * 4
+                ? Tspl.crop(full, java.util.Arrays.copyOfRange(crops, i * 4, i * 4 + 4)) : full;
         if (next != full) full.recycle();
         image.setImageBitmap(next);
         if (current != null) current.recycle();

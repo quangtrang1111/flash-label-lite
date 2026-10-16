@@ -28,14 +28,14 @@ final class PrintJob extends Thread {
 
     private static final long FINISH_TIMEOUT_MS = 120_000;
 
-    /** A page to print and the share of its height to cut off the bottom. */
+    /** A page to print and the share of its size to cut off each edge (see Tspl.crop). */
     static final class Item {
         final File file;
-        final float cropFraction;
+        final float[] crop;
 
-        Item(File file, float cropFraction) {
+        Item(File file, float[] crop) {
             this.file = file;
-            this.cropFraction = cropFraction;
+            this.crop = crop;
         }
     }
 
@@ -72,7 +72,7 @@ final class PrintJob extends Thread {
                 index++;
                 Bitmap full = BitmapFactory.decodeFile(page.file.getAbsolutePath());
                 if (full == null) continue;
-                Bitmap src = Tspl.cropBottom(full, page.cropFraction);
+                Bitmap src = Tspl.crop(full, page.crop);
                 Bitmap label = Tspl.renderLabel(src, widthMm, heightMm, angle, settings.dither);
                 if (src != full) src.recycle();
                 full.recycle();

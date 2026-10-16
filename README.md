@@ -28,7 +28,7 @@ editor. FlashLabel Lite does one job — print a PDF or image on a label printer
 - **Multiple files**: add several files, include or exclude pages with a tap, remove a whole file with ×.
 - **Page preview**: full-screen viewer with swipe, pinch-zoom and double-tap zoom.
 - **Label settings on one screen**: label type (black mark / gap / continuous), size in mm, print direction,
-  density, speed, photo dithering and **crop page bottom (mm)**. All settings are saved when you print.
+  density, speed, photo dithering and **crop margins (mm) on all four edges** with a live preview. All settings are saved when you print.
 - **Remembers your printer** and reconnects automatically when the app opens.
 - **Knows when printing is done**: waits for the printer to finish, then marks the job "Printed"
   and asks before printing the same pages again.

@@ -48,15 +48,54 @@ final class Tspl {
         return out;
     }
 
+    /** Index of each edge in a crop array. */
+    static final int TOP = 0, LEFT = 1, RIGHT = 2, BOTTOM = 3;
+
     /**
-     * Drops a horizontal strip off the bottom of a page.
-     * @param fraction share of the height to remove (0 = keep all); returns {@code src} when nothing is cut
+     * Cuts margins off a page.
+     * @param f share of the size to remove per edge {top, left, right, bottom} (top/bottom of the
+     *          height, left/right of the width); null or all zero returns {@code src} unchanged
      */
-    static Bitmap cropBottom(Bitmap src, float fraction) {
-        if (fraction <= 0f) return src;
-        int keep = Math.max(1, Math.round(src.getHeight() * (1f - fraction)));
-        if (keep >= src.getHeight()) return src;
-        return Bitmap.createBitmap(src, 0, 0, src.getWidth(), keep);
+    static Bitmap crop(Bitmap src, float[] f) {
+        if (f == null || (f[TOP] <= 0 && f[LEFT] <= 0 && f[RIGHT] <= 0 && f[BOTTOM] <= 0)) return src;
+        int w = src.getWidth(), h = src.getHeight();
+        int x = Math.round(w * f[LEFT]), y = Math.round(h * f[TOP]);
+        int cw = Math.max(1, w - x - Math.round(w * f[RIGHT]));
+        int ch = Math.max(1, h - y - Math.round(h * f[BOTTOM]));
+        x = Math.min(x, w - 1);
+        y = Math.min(y, h - 1);
+        cw = Math.min(cw, w - x);
+        ch = Math.min(ch, h - y);
+        if (x == 0 && y == 0 && cw == w && ch == h) return src;
+        return Bitmap.createBitmap(src, x, y, cw, ch);
+    }
+
+    /**
+     * Converts margins in mm into shares of a page's size, keeping at least 10% of each side.
+     * @param pxPerMm pixels per millimetre of the page
+     */
+    static float[] cropFractions(float topMm, float leftMm, float rightMm, float bottomMm,
+                                 int width, int height, float pxPerMm) {
+        float[] f = new float[4];
+        if (width <= 0 || height <= 0 || pxPerMm <= 0) return f;
+        f[TOP] = topMm * pxPerMm / height;
+        f[BOTTOM] = bottomMm * pxPerMm / height;
+        f[LEFT] = leftMm * pxPerMm / width;
+        f[RIGHT] = rightMm * pxPerMm / width;
+        limit(f, TOP, BOTTOM);
+        limit(f, LEFT, RIGHT);
+        return f;
+    }
+
+    /** Scales a pair of opposite margins down so they never remove more than 90% together. */
+    private static void limit(float[] f, int a, int b) {
+        f[a] = Math.max(0f, f[a]);
+        f[b] = Math.max(0f, f[b]);
+        float sum = f[a] + f[b];
+        if (sum > 0.9f) {
+            f[a] *= 0.9f / sum;
+            f[b] *= 0.9f / sum;
+        }
     }
 
     /** Replaces OpenCVUtils.getFlyodBitmap (19 MB of OpenCV) with plain Floyd–Steinberg. */

@@ -21,7 +21,12 @@ final class Prefs {
         int direction; // 1 = horizontal (no rotation), 0 = vertical (rotate 90°)
         int density, speed;
         boolean dither, compress;
-        float cropMm; // strip cut off the bottom of every page
+        /** Margins cut off every page before printing, in mm: top, left, right, bottom. */
+        float cropTop, cropLeft, cropRight, cropBottom;
+
+        boolean hasCrop() {
+            return cropTop > 0 || cropLeft > 0 || cropRight > 0 || cropBottom > 0;
+        }
     }
 
     Settings load() {
@@ -34,7 +39,10 @@ final class Prefs {
         s.speed = sp.getInt("speed", 4);
         s.dither = sp.getBoolean("floyd", false);
         s.compress = sp.getBoolean("compress", true);
-        s.cropMm = sp.getFloat("crop", 0f);
+        s.cropTop = sp.getFloat("cropT", 0f);
+        s.cropLeft = sp.getFloat("cropL", 0f);
+        s.cropRight = sp.getFloat("cropR", 0f);
+        s.cropBottom = sp.getFloat("cropB", sp.getFloat("crop", 0f)); // "crop" = old bottom-only setting
         return s;
     }
 
@@ -48,7 +56,11 @@ final class Prefs {
                 .putInt("speed", s.speed)
                 .putBoolean("floyd", s.dither)
                 .putBoolean("compress", s.compress)
-                .putFloat("crop", s.cropMm)
+                .putFloat("cropT", s.cropTop)
+                .putFloat("cropL", s.cropLeft)
+                .putFloat("cropR", s.cropRight)
+                .putFloat("cropB", s.cropBottom)
+                .remove("crop")
                 .apply();
     }
 

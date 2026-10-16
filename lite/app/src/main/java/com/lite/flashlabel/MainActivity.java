@@ -46,7 +46,7 @@ import static com.lite.flashlabel.Ui.margins;
 @SuppressWarnings("deprecation")
 public class MainActivity extends Activity {
     private static final String TAG = "FlashLite";
-    private static final int REQ_PICK = 1, REQ_PERMS = 2;
+    private static final int REQ_PICK = 1, REQ_PERMS = 2, REQ_CROP = 3;
 
     /** Dropdown order for label types: black mark first (the default). */
     private static final int[] PAPER_ORDER = {Tspl.PAPER_BLACK_MARK, Tspl.PAPER_GAP, Tspl.PAPER_CONTINUOUS};
@@ -75,14 +75,15 @@ public class MainActivity extends Activity {
         }
     }
 
-    /**
-     * Share of the page height removed by the "crop bottom" setting. PDFs use their real size;
-     * images have none, so their width is taken to span the label width.
-     */
-    private float cropFraction(Page p) {
-        if (settings.cropMm <= 0f || p.height <= 0) return 0f;
-        float pxPerMm = p.pxPerMm > 0f ? p.pxPerMm : p.width / settings.widthMm;
-        return Math.min(0.9f, settings.cropMm * pxPerMm / p.height);
+    /** Pixels per mm of a page. PDFs know their size; images are taken to span the label width. */
+    private float pxPerMm(Page p) {
+        return p.pxPerMm > 0f ? p.pxPerMm : p.width / settings.widthMm;
+    }
+
+    /** Share of the page cut off each edge {top, left, right, bottom} by the crop settings. */
+    private float[] cropOf(Page p) {
+        return Tspl.cropFractions(settings.cropTop, settings.cropLeft, settings.cropRight, settings.cropBottom,
+                p.width, p.height, pxPerMm(p));
     }
 
     private final List<Page> pages = new ArrayList<>();
@@ -94,7 +95,8 @@ public class MainActivity extends Activity {
 
     private TextView chipHorizontal, verticalText, printerLabel, printButton;
     private FrameLayout chipVertical;
-    private EditText etWidth, etHeight, etCrop;
+    private EditText etWidth, etHeight;
+    private TextView cropSummary;
     private LinearLayout strip;
     private PrintJob job;
     private ProgressDialog printDialog;
@@ -244,21 +246,13 @@ public class MainActivity extends Activity {
         col.addView(switchRow(Strings.COMPRESS, settings.compress, true, on -> settings.compress = on),
                 lp(MATCH, dp(this, 56)));
 
-        LinearLayout crop = settingRow(Strings.CROP_BOTTOM);
-        etCrop = numberField();
-        etCrop.setGravity(Gravity.CENTER);
-        etCrop.setPadding(0, 0, 0, 0);
-        etCrop.setText(fmt(settings.cropMm));
-        etCrop.setOnFocusChangeListener((v, focus) -> {
-            if (!focus) readCrop();
-        });
-        etCrop.setOnEditorActionListener((v, action, ev) -> {
-            v.clearFocus();
-            readCrop();
-            return false;
-        });
-        crop.addView(etCrop, lp(dp(this, 110), dp(this, 40)));
+        LinearLayout crop = settingRow(Strings.CROP_EDGES);
+        cropSummary = Ui.text(this, "", 16, Ui.HINT);
+        crop.addView(cropSummary);
+        crop.addView(Ui.icon(this, Ui.Icon.CHEVRON, Ui.HINT, 14, 32));
+        crop.setOnClickListener(v -> openCropSettings());
         col.addView(crop, lp(MATCH, dp(this, 56)));
+        updateCropSummary();
         return col;
     }
 
@@ -379,14 +373,31 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** Parses the crop field (0..300 mm) and refreshes the thumbnails when it changes. */
-    private void readCrop() {
-        float mm = Math.max(0f, Math.min(300f, parse(etCrop.getText().toString())));
-        if (!fmt(mm).equals(etCrop.getText().toString())) etCrop.setText(fmt(mm));
-        if (mm != settings.cropMm) {
-            settings.cropMm = mm;
-            rebuildStrip();
+    /** Opens the crop sub-page, previewing the first page (or the first selected one). */
+    private void openCropSettings() {
+        readLabelSize();
+        Page sample = null;
+        for (Page p : pages) {
+            if (p.checked) {
+                sample = p;
+                break;
+            }
         }
+        if (sample == null && !pages.isEmpty()) sample = pages.get(0);
+        float[] values = {settings.cropTop, settings.cropLeft, settings.cropRight, settings.cropBottom};
+        startActivityForResult(sample == null
+                ? CropActivity.intent(this, values, null, 0, 0, 0f)
+                : CropActivity.intent(this, values, sample.file, sample.width, sample.height, pxPerMm(sample)), REQ_CROP);
+    }
+
+    /** "↑2  ←0  →0  ↓14" (arrows read the same in every language), or "None". */
+    private void updateCropSummary() {
+        if (!settings.hasCrop()) {
+            cropSummary.setText(Strings.CROP_NONE);
+            return;
+        }
+        cropSummary.setText("↑" + fmt(settings.cropTop) + "  ←" + fmt(settings.cropLeft)
+                + "  →" + fmt(settings.cropRight) + "  ↓" + fmt(settings.cropBottom));
     }
 
     private static float clampSize(float v) {
@@ -439,7 +450,7 @@ public class MainActivity extends Activity {
             iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
             iv.setBackgroundColor(Color.WHITE);
             if (page.thumb != null) {
-                Bitmap shown = Tspl.cropBottom(page.thumb, cropFraction(page));
+                Bitmap shown = Tspl.crop(page.thumb, cropOf(page));
                 iv.setImageBitmap(angle() == 0f ? shown : rotate(shown, angle()));
             }
             iv.setAlpha(page.checked ? 1f : 0.4f);
@@ -494,12 +505,11 @@ public class MainActivity extends Activity {
     }
 
     private void openPreview(int index) {
-        readCrop();
         List<File> files = new ArrayList<>();
-        float[] crops = new float[pages.size()];
+        float[] crops = new float[pages.size() * 4];
         for (int i = 0; i < pages.size(); i++) {
             files.add(pages.get(i).file);
-            crops[i] = cropFraction(pages.get(i));
+            System.arraycopy(cropOf(pages.get(i)), 0, crops, i * 4, 4);
         }
         PreviewActivity.open(this, files, crops, index);
     }
@@ -630,6 +640,16 @@ public class MainActivity extends Activity {
                 uris.add(data.getData());
             }
             if (!uris.isEmpty()) loadDocs(uris, false); // "Thêm tệp": append
+        } else if (req == REQ_CROP && result == RESULT_OK && data != null) {
+            float[] v = data.getFloatArrayExtra(CropActivity.EXTRA_VALUES);
+            if (v != null && v.length == 4) {
+                settings.cropTop = v[Tspl.TOP];
+                settings.cropLeft = v[Tspl.LEFT];
+                settings.cropRight = v[Tspl.RIGHT];
+                settings.cropBottom = v[Tspl.BOTTOM];
+                updateCropSummary();
+                rebuildStrip();
+            }
         }
     }
 
@@ -700,7 +720,6 @@ public class MainActivity extends Activity {
     /** Applies and saves every setting, makes sure a printer is connected, then prints. */
     private void startPrintFlow() {
         readLabelSize();
-        readCrop();
         prefs.save(settings);
         if (connecting) {
             toast(Strings.STILL_CONNECTING);
@@ -713,7 +732,7 @@ public class MainActivity extends Activity {
 
     private void checkStatusAndPrint() {
         List<PrintJob.Item> selected = new ArrayList<>();
-        for (Page p : pages) if (p.checked) selected.add(new PrintJob.Item(p.file, cropFraction(p)));
+        for (Page p : pages) if (p.checked) selected.add(new PrintJob.Item(p.file, cropOf(p)));
         if (selected.isEmpty()) {
             toast(Strings.NO_PAGE_SELECTED);
             return;

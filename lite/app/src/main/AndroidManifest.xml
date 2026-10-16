@@ -66,6 +66,12 @@
         </activity>
 
         <activity
+            android:name=".CropActivity"
+            android:exported="false"
+            android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustResize" />
+
+        <activity
             android:name=".PreviewActivity"
             android:exported="false"
             android:theme="@android:style/Theme.Material.NoActionBar" />
