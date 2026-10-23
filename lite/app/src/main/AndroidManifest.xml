@@ -13,6 +13,12 @@
     <!-- Downloading PDFs/images from shared links -->
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- Printing keeps running in the background as a foreground service -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+
     <uses-feature android:name="android.hardware.bluetooth" android:required="true" />
 
     <application
@@ -64,6 +70,11 @@
                 <data android:mimeType="image/*" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".PrintService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
 
         <activity
             android:name=".CropActivity"

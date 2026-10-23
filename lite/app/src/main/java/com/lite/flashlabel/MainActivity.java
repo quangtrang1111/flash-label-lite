@@ -46,7 +46,7 @@ import static com.lite.flashlabel.Ui.margins;
 @SuppressWarnings("deprecation")
 public class MainActivity extends Activity {
     private static final String TAG = "FlashLite";
-    private static final int REQ_PICK = 1, REQ_PERMS = 2, REQ_CROP = 3;
+    private static final int REQ_PICK = 1, REQ_PERMS = 2, REQ_CROP = 3, REQ_NOTIFY = 4;
 
     /** Dropdown order for label types: black mark first (the default). */
     private static final int[] PAPER_ORDER = {Tspl.PAPER_BLACK_MARK, Tspl.PAPER_GAP, Tspl.PAPER_CONTINUOUS};
@@ -98,8 +98,20 @@ public class MainActivity extends Activity {
     private EditText etWidth, etHeight;
     private TextView cropSummary;
     private LinearLayout strip;
-    private PrintJob job;
     private ProgressDialog printDialog;
+
+    /** Receives progress from PrintService while this screen is visible. */
+    private final PrintJob.Listener printListener = new PrintJob.Listener() {
+        @Override
+        public void onProgress(String message) {
+            if (printDialog != null) printDialog.setMessage(message);
+        }
+
+        @Override
+        public void onFinished(boolean ok, String message) {
+            onPrintFinished(ok, message);
+        }
+    };
 
     @Override
     protected void onCreate(Bundle state) {
@@ -130,6 +142,20 @@ public class MainActivity extends Activity {
         super.onResume();
         refreshPrinterLabel();
         autoConnect();
+        // Re-attach to a print job that kept running in the background.
+        PrintService.setListener(printListener);
+        PrintService.Result r = PrintService.takeResult();
+        if (r != null) {
+            onPrintFinished(r.printed, r.message);
+        } else if (PrintService.isRunning()) {
+            showPrintDialog(PrintService.lastMessage());
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        PrintService.setListener(null);
     }
 
     // ---------------------------------------------------------------- UI
@@ -599,7 +625,7 @@ public class MainActivity extends Activity {
      * - unprinted files open: ask whether to replace them or add the new ones.
      */
     private void receiveShared(List<Uri> uris) {
-        if (job != null) {
+        if (PrintService.isRunning()) {
             toast(Strings.SHARE_SKIPPED_PRINTING);
         } else if (pages.isEmpty() || printed) {
             loadDocs(uris, true);
@@ -782,32 +808,42 @@ public class MainActivity extends Activity {
                 toast(Strings.DEVICE_ERROR);
                 return;
         }
-        printDialog = new ProgressDialog(this);
-        printDialog.setMessage(Strings.PRINTING);
-        printDialog.setCancelable(false);
-        printDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, Strings.CANCEL, (d, w) -> {
-            if (job != null) job.cancel();
-        });
-        printDialog.show();
-        job = new PrintJob(selected, settings, new PrintJob.Listener() {
-            @Override
-            public void onProgress(String message) {
-                if (printDialog != null) printDialog.setMessage(message);
-            }
+        requestNotificationPermission();
+        showPrintDialog(Strings.PRINTING);
+        PrintService.setListener(printListener);
+        PrintService.start(this, selected, settings);
+    }
 
-            @Override
-            public void onFinished(boolean ok, String message) {
-                if (printDialog != null && printDialog.isShowing() && !isFinishing()) printDialog.dismiss();
-                job = null;
-                if (ok) {
-                    printed = true;
-                    updatePrintButton();
-                }
-                refreshPrinterLabel();
-                if (message != null) toast(message);
-            }
-        });
-        job.start();
+    /** Progress dialog for the running job; "Cancel" stops it, leaving the app keeps it printing. */
+    private void showPrintDialog(String message) {
+        if (printDialog != null && printDialog.isShowing()) {
+            printDialog.setMessage(message);
+            return;
+        }
+        printDialog = new ProgressDialog(this);
+        printDialog.setMessage(message);
+        printDialog.setCancelable(false);
+        printDialog.setButton(ProgressDialog.BUTTON_NEGATIVE, Strings.CANCEL, (d, w) -> PrintService.cancel());
+        printDialog.show();
+    }
+
+    private void onPrintFinished(boolean ok, String message) {
+        if (printDialog != null && printDialog.isShowing() && !isFinishing()) printDialog.dismiss();
+        printDialog = null;
+        if (ok) {
+            printed = true;
+            updatePrintButton();
+        }
+        refreshPrinterLabel();
+        if (message != null) toast(message);
+    }
+
+    /** Android 13+ needs permission to show the printing notification (printing works without it). */
+    private void requestNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, REQ_NOTIFY);
+        }
     }
 
     private void toast(String s) {
