@@ -588,7 +588,29 @@ public class MainActivity extends Activity {
             if (Intent.ACTION_SEND.equals(action)) toast(Strings.NO_LINK);
             rebuildStrip();
         } else {
-            loadDocs(uris, true); // shared/opened from another app: show only these files
+            receiveShared(uris);
+        }
+    }
+
+    /**
+     * Files shared/opened from another app:
+     * - while printing: ignored (with a message), so the running job isn't disturbed;
+     * - nothing open, or everything already printed: they replace the list;
+     * - unprinted files open: ask whether to replace them or add the new ones.
+     */
+    private void receiveShared(List<Uri> uris) {
+        if (job != null) {
+            toast(Strings.SHARE_SKIPPED_PRINTING);
+        } else if (pages.isEmpty() || printed) {
+            loadDocs(uris, true);
+        } else {
+            new AlertDialog.Builder(this)
+                    .setTitle(Strings.SHARE_TITLE)
+                    .setMessage(Strings.SHARE_MESSAGE)
+                    .setPositiveButton(Strings.SHARE_REPLACE, (d, w) -> loadDocs(uris, true))
+                    .setNeutralButton(Strings.SHARE_APPEND, (d, w) -> loadDocs(uris, false))
+                    .setNegativeButton(Strings.CANCEL, null)
+                    .show();
         }
     }
 
