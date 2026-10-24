@@ -24,8 +24,10 @@ import java.util.List;
  * screen is away is kept until {@link #takeResult} picks it up.
  */
 public class PrintService extends Service {
-    private static final String CHANNEL_PROGRESS = "printing", CHANNEL_DONE = "print_done";
-    private static final int NOTIFY_PROGRESS = 1, NOTIFY_DONE = 2;
+    private static final String CHANNEL_PROGRESS = "printing";
+    /** Channel of the old "finished" notification; deleted on start so it doesn't linger in settings. */
+    private static final String OLD_CHANNEL_DONE = "print_done";
+    private static final int NOTIFY_PROGRESS = 1;
     private static final long WAKE_LOCK_TIMEOUT_MS = 30 * 60 * 1000L;
 
     /** Outcome of a finished job, kept until the print screen reads it. */
@@ -70,7 +72,7 @@ public class PrintService extends Service {
                 } else {
                     result = new Result(printed, message);
                 }
-                if (s != null) s.finish(printed, message);
+                if (s != null) s.finish();
             }
         });
         job = pending;
@@ -134,20 +136,9 @@ public class PrintService extends Service {
         return START_NOT_STICKY;
     }
 
-    private void finish(boolean printed, String message) {
+    private void finish() {
         releaseWakeLock();
-        stopForegroundCompat();
-        // A short "done" notification so the user knows even if the app is in the background.
-        if (uiListener == null) {
-            String text = message != null ? message : printed ? Strings.PRINT_DONE : Strings.PRINT_CANCELLED;
-            Notification.Builder b = builder(CHANNEL_DONE)
-                    .setSmallIcon(android.R.drawable.stat_sys_upload_done)
-                    .setContentTitle(Strings.APP_NAME)
-                    .setContentText(text)
-                    .setContentIntent(openApp())
-                    .setAutoCancel(true);
-            notificationManager().notify(NOTIFY_DONE, b.build());
-        }
+        stopForegroundCompat(); // removes the "printing" notification; no separate "done" notification
         stopSelf();
     }
 
@@ -183,7 +174,7 @@ public class PrintService extends Service {
         NotificationChannel progress = new NotificationChannel(CHANNEL_PROGRESS, Strings.PRINTING, NotificationManager.IMPORTANCE_LOW);
         progress.setShowBadge(false);
         nm.createNotificationChannel(progress);
-        nm.createNotificationChannel(new NotificationChannel(CHANNEL_DONE, Strings.PRINT_DONE, NotificationManager.IMPORTANCE_DEFAULT));
+        nm.deleteNotificationChannel(OLD_CHANNEL_DONE);
     }
 
     private NotificationManager notificationManager() {

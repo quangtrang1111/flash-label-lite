@@ -72,9 +72,6 @@ final class Strings {
             "Tài liệu này đã được in. Bạn có muốn in lại không?");
 
     // Print progress / printer status
-    static final String APP_NAME = "FlashLabel Lite";
-    static final String PRINT_DONE = t("Printing finished", "Đã in xong");
-    static final String PRINT_CANCELLED = t("Printing cancelled", "Đã huỷ in");
     static final String PRINTING = t("Printing", "Đang in");
     static final String SENDING_PAGE = t("Sending page ", "Đang truyền trang ");
     static final String WAITING_FINISH = t("Waiting for the printer to finish…", "Đang chờ máy in in xong…");
