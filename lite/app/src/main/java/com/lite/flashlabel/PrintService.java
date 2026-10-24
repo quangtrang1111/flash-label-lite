@@ -16,7 +16,8 @@ import java.util.List;
 
 /**
  * Foreground service that runs the print job, so printing keeps going when the app is in the
- * background or the screen is off. Shows progress in a notification with a cancel button.
+ * background or the screen is off. Shows progress in a notification; cancelling is only possible
+ * from the progress dialog inside the app.
  *
  * The print screen talks to it through static methods: {@link #start}, {@link #cancel},
  * {@link #isRunning}, and a listener it attaches while visible. A result that arrives while the
@@ -25,7 +26,6 @@ import java.util.List;
 public class PrintService extends Service {
     private static final String CHANNEL_PROGRESS = "printing", CHANNEL_DONE = "print_done";
     private static final int NOTIFY_PROGRESS = 1, NOTIFY_DONE = 2;
-    private static final String ACTION_CANCEL = "dev.quangtrang.flashlabelite.CANCEL_PRINT";
     private static final long WAKE_LOCK_TIMEOUT_MS = 30 * 60 * 1000L;
 
     /** Outcome of a finished job, kept until the print screen reads it. */
@@ -114,10 +114,6 @@ public class PrintService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && ACTION_CANCEL.equals(intent.getAction())) {
-            cancel();
-            return START_NOT_STICKY;
-        }
         Notification n = progressNotification(lastMessage);
         if (Build.VERSION.SDK_INT >= 29) {
             startForeground(NOTIFY_PROGRESS, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_CONNECTED_DEVICE);
@@ -160,9 +156,6 @@ public class PrintService extends Service {
     }
 
     private Notification progressNotification(String message) {
-        Intent cancel = new Intent(this, PrintService.class).setAction(ACTION_CANCEL);
-        PendingIntent cancelPi = PendingIntent.getService(this, 1, cancel,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder b = builder(CHANNEL_PROGRESS)
                 .setSmallIcon(android.R.drawable.stat_sys_upload)
                 .setContentTitle(Strings.PRINTING)
@@ -170,8 +163,7 @@ public class PrintService extends Service {
                 .setContentIntent(openApp())
                 .setOngoing(true)
                 .setOnlyAlertOnce(true)
-                .setProgress(0, 0, true)
-                .addAction(new Notification.Action.Builder(null, Strings.CANCEL, cancelPi).build());
+                .setProgress(0, 0, true);
         return b.build();
     }
 
